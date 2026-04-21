@@ -1,19 +1,9 @@
 local Library = getgenv().Library
 
--- Создаем вкладку
-Library:CreateTab("Main")
-
--- Добавляем обычную кнопку
-Library:AddButton("Main", "Force Update", "Force update the current target", function() 
-    print("Цель обновлена!") 
+Library:AddToggle("Main", "Silent Aim", "Automatically hits targets", false, function(v)
+    print("Silent Aim:", v)
 end)
 
--- Добавляем переключатель
-Library:AddToggle("Main", "Aim", "Automatically aim at enemies", false, function(state) 
-    print("AimBot статус:", state)
-end)
-
--- Добавляем слайдер
-Library:AddSlider("Main", "FOV Size", 10, 300, 90, function(value) 
-    print("FOV теперь:", value)
+Library:AddButton("Main", "Destroy Map", {Text = "Dangerous!", Warning = true}, function()
+    print("Map Destroyed")
 end)
