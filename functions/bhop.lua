@@ -62,12 +62,7 @@ local function UpdateBhopLoop()
                         break
                     end
                 elseif bind.mode == "toggle" then
-                    -- Для toggle нужно хранить состояние, но проще проверять нажатие
-                    -- Можно использовать InputBegan, но тут просто проверяем, был ли нажат ключ недавно
-                    -- Упростим: если бинд toggle активен, считаем всегда активным (управляется отдельно)
-                    -- На самом деле toggle должен включать/выключать Bhop.Enabled, но здесь предполагается,
-                    -- что Bhop.Enabled управляется через UI, а бинды - это дополнительные клавиши активации.
-                    -- Для простоты будем считать, что если есть любой бинд toggle, и он включен, то Bhop активен.
+                    -- Для toggle считаем всегда активным, если бинд есть (управление через UI)
                     anyActive = true
                     break
                 end
@@ -83,6 +78,7 @@ end
 
 -- Создание окна настроек
 local function ShowSettings()
+    local Theme = Library.Theme
     local elements = {}
 
     -- Chance Slider
@@ -96,7 +92,7 @@ local function ShowSettings()
     chanceLabel.Size = UDim2.new(1,0,0,20)
     chanceLabel.BackgroundTransparency = 1
     chanceLabel.Text = "Chance: " .. Bhop.Chance .. (Bhop.Chance == 100 and " (Perfect)" or "")
-    chanceLabel.TextColor3 = Library.Theme.White
+    chanceLabel.TextColor3 = Theme.White
     chanceLabel.Font = Enum.Font.GothamMedium
     chanceLabel.TextSize = 14
     chanceLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -104,14 +100,14 @@ local function ShowSettings()
     Library.ApplyTextStroke(chanceLabel)
 
     local chanceBG = Instance.new("Frame")
-    chanceBG.BackgroundColor3 = Library.Theme.NotchBG
+    chanceBG.BackgroundColor3 = Theme.NotchBG
     chanceBG.Size = UDim2.new(1,0,0,6)
     chanceBG.Position = UDim2.new(0,0,0,28)
     chanceBG.Parent = chanceFrame
     Instance.new("UICorner", chanceBG).CornerRadius = UDim.new(1,0)
 
     local chanceFill = Instance.new("Frame")
-    chanceFill.BackgroundColor3 = Library.Theme.PastelPink
+    chanceFill.BackgroundColor3 = Theme.PastelPink
     chanceFill.Size = UDim2.new(Bhop.Chance/100,0,1,0)
     chanceFill.Parent = chanceBG
     Instance.new("UICorner", chanceFill).CornerRadius = UDim.new(1,0)
@@ -153,7 +149,7 @@ local function ShowSettings()
     timingLabel.Size = UDim2.new(1,0,0,20)
     timingLabel.BackgroundTransparency = 1
     timingLabel.Text = "Timing: " .. Bhop.Timing .. " ms" .. (Bhop.Timing == 0 and " (Perfect)" or "")
-    timingLabel.TextColor3 = Library.Theme.White
+    timingLabel.TextColor3 = Theme.White
     timingLabel.Font = Enum.Font.GothamMedium
     timingLabel.TextSize = 14
     timingLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -161,14 +157,14 @@ local function ShowSettings()
     Library.ApplyTextStroke(timingLabel)
 
     local timingBG = Instance.new("Frame")
-    timingBG.BackgroundColor3 = Library.Theme.NotchBG
+    timingBG.BackgroundColor3 = Theme.NotchBG
     timingBG.Size = UDim2.new(1,0,0,6)
     timingBG.Position = UDim2.new(0,0,0,28)
     timingBG.Parent = timingFrame
     Instance.new("UICorner", timingBG).CornerRadius = UDim.new(1,0)
 
     local timingFill = Instance.new("Frame")
-    timingFill.BackgroundColor3 = Library.Theme.PastelPink
+    timingFill.BackgroundColor3 = Theme.PastelPink
     timingFill.Size = UDim2.new(Bhop.Timing/10,0,1,0)
     timingFill.Parent = timingBG
     Instance.new("UICorner", timingFill).CornerRadius = UDim.new(1,0)
@@ -220,7 +216,7 @@ local function ShowBinds()
 end
 
 -- Добавляем кнопку в таб Main
-local btn = Library:AddFeatureButton("Main", "Bhop", "Auto bunny hop with settings", {
+local btn = Library:AddFeatureButton("Main", "Bhop", nil, {   -- <-- tooltipData = nil, чтобы не было тултипа
     onClick = function()
         Bhop.Enabled = not Bhop.Enabled
         btn.TextColor3 = Bhop.Enabled and Library.Theme.PastelPink or Library.Theme.White
