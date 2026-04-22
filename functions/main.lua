@@ -1,9 +1,170 @@
 local Library = getgenv().Library
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local VIM = game:GetService("VirtualInputManager")
 
-Library:AddToggle("Main", "Silent Aim", "Automatically hits targets", false, function(v)
-    print("Silent Aim:", v)
+local LocalPlayer = Players.LocalPlayer
+
+-- Настройки Бхопа
+local BhopSettings = {
+    Enabled = false,
+    Chance = 100, 
+    DelayMs = 0,
+    Binds = {} -- Формат: { [Enum.KeyCode.F] = "Hold", [Enum.KeyCode.T] = "Toggle" }
+}
+
+-- Имитация физического нажатия на Space
+local function SimulateSpacebar()
+    if keypress and keyrelease then
+        keypress(0x20) -- 0x20 это Space 
+        task.wait(0.01)
+        keyrelease(0x20)
+    else
+        -- Фоллбек, если экзекутор не поддерживает keypress
+        VIM:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+        task.wait(0.01)
+        VIM:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+    end
+end
+
+-- Основная логика: отслеживаем приземление
+local connection
+local function SetupBhop(character)
+    if connection then connection:Disconnect() end
+    local humanoid = character:WaitForChild("Humanoid", 5)
+    if not humanoid then return end
+
+    connection = humanoid.StateChanged:Connect(function(oldState, newState)
+        if not BhopSettings.Enabled then return end
+        
+        -- Срабатывает в самый первый кадр касания земли
+        if newState == Enum.HumanoidStateType.Landed or newState == Enum.HumanoidStateType.Running then
+            -- Проверяем шанс
+            if math.random(1, 100) <= BhopSettings.Chance then
+                task.spawn(function()
+                    -- Проверяем тайминг (задержку)
+                    if BhopSettings.DelayMs > 0 then
+                        task.wait(BhopSettings.DelayMs / 1000)
+                    end
+                    SimulateSpacebar()
+                end)
+            end
+        end
+    end)
+end
+
+if LocalPlayer.Character then SetupBhop(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(SetupBhop)
+
+-- СОЗДАЕМ UI КНОПКУ BHOP
+local BhopToggle = Library:AddToggle("Main", "Perfect Bhop", "RMB - Settings | MMB - Keybinds", false, function(v)
+    BhopSettings.Enabled = v
 end)
 
+-- НАСТРОЙКИ (ПКМ)
+BhopToggle.OnRightClick = function()
+    local modal = Library:OpenModal("Bhop Settings")
+    
+    Library:AddModalSlider(modal, "Hit Chance", 0, 100, BhopSettings.Chance, function(v)
+        return v == 100 and "Perfect" or v.."%"
+    end, function(val)
+        BhopSettings.Chance = val
+    end)
+
+    Library:AddModalSlider(modal, "Timing Delay", 0, 10, BhopSettings.DelayMs, function(v)
+        return v == 0 and "Perfect" or v.." ms"
+    end, function(val)
+        BhopSettings.DelayMs = val
+    end)
+end
+
+-- МЕНЕДЖЕР БИНДОВ (СКМ)
+BhopToggle.OnMiddleClick = function()
+    local modal = Library:OpenModal("Bhop Keybinds")
+    
+    local function RefreshBindsList()
+        for _, c in pairs(modal:GetChildren()) do
+            if not c:IsA("UIListLayout") and not c:IsA("UIPadding") then c:Destroy() end
+        end
+        
+        -- Кнопка "Добавить бинд"
+        local AddBtn = Instance.new("TextButton")
+        AddBtn.Size = UDim2.new(0.9,0,0,30); AddBtn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+        AddBtn.Text = "+ Press to bind key"; AddBtn.TextColor3 = Color3.new(1,1,1); AddBtn.Font = Enum.Font.GothamMedium; AddBtn.Parent = modal
+        Instance.new("UICorner", AddBtn).CornerRadius = UDim.new(0,6)
+        
+        local listening = false
+        AddBtn.MouseButton1Click:Connect(function()
+            if listening then return end
+            listening = true
+            AddBtn.Text = "... Press any key ..."
+            AddBtn.TextColor3 = Color3.fromRGB(255, 175, 200)
+            
+            local c; c = UserInputService.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.Keyboard then
+                    BhopSettings.Binds[input.KeyCode] = "Toggle" -- По умолчанию режим Toggle
+                    c:Disconnect()
+                    RefreshBindsList()
+                end
+            end)
+        end)
+        
+        -- Список текущих биндов
+        for key, mode in pairs(BhopSettings.Binds) do
+            local Row = Instance.new("Frame")
+            Row.Size = UDim2.new(0.9,0,0,30); Row.BackgroundTransparency = 1; Row.Parent = modal
+            
+            local KeyLabel = Instance.new("TextLabel")
+            KeyLabel.Size = UDim2.new(0.4,0,1,0); KeyLabel.BackgroundTransparency = 1; KeyLabel.Text = key.Name
+            KeyLabel.TextColor3 = Color3.new(1,1,1); KeyLabel.Font = Enum.Font.GothamMedium; KeyLabel.TextXAlignment = Enum.TextXAlignment.Left; KeyLabel.Parent = Row
+            
+            local ModeBtn = Instance.new("TextButton")
+            ModeBtn.Size = UDim2.new(0.4,0,1,0); ModeBtn.Position = UDim2.new(0.4,0,0,0); ModeBtn.BackgroundColor3 = Color3.fromRGB(25,25,25)
+            ModeBtn.Text = mode; ModeBtn.TextColor3 = Color3.fromRGB(200,200,200); ModeBtn.Font = Enum.Font.GothamMedium; ModeBtn.Parent = Row
+            Instance.new("UICorner", ModeBtn).CornerRadius = UDim.new(0,6)
+            ModeBtn.MouseButton1Click:Connect(function()
+                BhopSettings.Binds[key] = (BhopSettings.Binds[key] == "Toggle" and "Hold" or "Toggle")
+                ModeBtn.Text = BhopSettings.Binds[key]
+            end)
+            
+            local DelBtn = Instance.new("TextButton")
+            DelBtn.Size = UDim2.new(0.15,0,1,0); DelBtn.Position = UDim2.new(0.85,0,0,0); DelBtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
+            DelBtn.Text = "X"; DelBtn.TextColor3 = Color3.new(1,1,1); DelBtn.Font = Enum.Font.GothamBold; DelBtn.Parent = Row
+            Instance.new("UICorner", DelBtn).CornerRadius = UDim.new(0,6)
+            DelBtn.MouseButton1Click:Connect(function()
+                BhopSettings.Binds[key] = nil
+                RefreshBindsList()
+            end)
+        end
+    end
+    RefreshBindsList()
+end
+
+-- Обработка нажатий клавиш для биндов
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard and BhopSettings.Binds[input.KeyCode] then
+        local mode = BhopSettings.Binds[input.KeyCode]
+        if mode == "Toggle" then
+            BhopToggle:SetValue(not BhopToggle.State)
+        elseif mode == "Hold" then
+            BhopToggle:SetValue(true)
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gp)
+    if gp then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard and BhopSettings.Binds[input.KeyCode] then
+        local mode = BhopSettings.Binds[input.KeyCode]
+        if mode == "Hold" then
+            BhopToggle:SetValue(false)
+        end
+    end
+end)
+
+
+-- Остальные заглушки для примера
 Library:AddButton("Main", "Destroy Map", {Text = "Dangerous!", Warning = true}, function()
     print("Map Destroyed")
 end)
