@@ -75,21 +75,24 @@ BhopToggle.OnMiddleClick = function()
     local modal = Library:OpenModal("Bhop Keybinds")
     
     local function RefreshBindsList()
-        -- Зачищаем окно
         for _, c in pairs(modal:GetChildren()) do
             if not c:IsA("UIListLayout") and not c:IsA("UIPadding") then c:Destroy() end
         end
         
-        -- Создаем кнопку добавления (сделал ее очень явной, 100% ширины с учетом отступов)
+        -- Яркая и заметная кнопка добавления бинда
         local AddBtn = Instance.new("TextButton")
         AddBtn.Size = UDim2.new(1, -20, 0, 40) 
-        AddBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        AddBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
         AddBtn.Text = "+ CLICK TO ADD BIND"
-        AddBtn.TextColor3 = Color3.fromRGB(255, 175, 200) -- Цвет темы
+        AddBtn.TextColor3 = Color3.fromRGB(255, 175, 200)
         AddBtn.Font = Enum.Font.GothamBold
         AddBtn.TextSize = 14
         AddBtn.Parent = modal
         Instance.new("UICorner", AddBtn).CornerRadius = UDim.new(0, 6)
+        
+        -- Легкая обводка чтобы кнопка не сливалась с фоном
+        local s1 = Instance.new("UIStroke", AddBtn)
+        s1.Color = Color3.fromRGB(50, 50, 50); s1.Thickness = 1
         
         local listening = false
         AddBtn.MouseButton1Click:Connect(function()
@@ -97,6 +100,7 @@ BhopToggle.OnMiddleClick = function()
             listening = true
             AddBtn.Text = "... PRESS ANY KEY ..."
             AddBtn.TextColor3 = Color3.new(1, 1, 1)
+            s1.Color = Color3.fromRGB(255, 175, 200) -- Подсветка во время бинда
             
             local c; c = UserInputService.InputBegan:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.Keyboard then
@@ -107,7 +111,6 @@ BhopToggle.OnMiddleClick = function()
             end)
         end)
         
-        -- Создаем список текущих биндов
         for key, mode in pairs(BhopSettings.Binds) do
             local Row = Instance.new("Frame")
             Row.Size = UDim2.new(1, -20, 0, 35)
@@ -127,13 +130,14 @@ BhopToggle.OnMiddleClick = function()
             local ModeBtn = Instance.new("TextButton")
             ModeBtn.Size = UDim2.new(0.4, -5, 1, 0)
             ModeBtn.Position = UDim2.new(0.4, 0, 0, 0)
-            ModeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            ModeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
             ModeBtn.Text = mode
             ModeBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
             ModeBtn.Font = Enum.Font.GothamMedium
             ModeBtn.TextSize = 13
             ModeBtn.Parent = Row
             Instance.new("UICorner", ModeBtn).CornerRadius = UDim.new(0, 6)
+            local s2 = Instance.new("UIStroke", ModeBtn); s2.Color = Color3.fromRGB(50, 50, 50)
             
             ModeBtn.MouseButton1Click:Connect(function()
                 BhopSettings.Binds[key] = (BhopSettings.Binds[key] == "Toggle" and "Hold" or "Toggle")
@@ -143,12 +147,13 @@ BhopToggle.OnMiddleClick = function()
             local DelBtn = Instance.new("TextButton")
             DelBtn.Size = UDim2.new(0.2, 0, 1, 0)
             DelBtn.Position = UDim2.new(0.8, 0, 0, 0)
-            DelBtn.BackgroundColor3 = Color3.fromRGB(200, 70, 70)
+            DelBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
             DelBtn.Text = "X"
-            DelBtn.TextColor3 = Color3.new(1, 1, 1)
+            DelBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
             DelBtn.Font = Enum.Font.GothamBold
             DelBtn.Parent = Row
             Instance.new("UICorner", DelBtn).CornerRadius = UDim.new(0, 6)
+            local s3 = Instance.new("UIStroke", DelBtn); s3.Color = Color3.fromRGB(255, 100, 100); s3.Transparency = 0.5
             
             DelBtn.MouseButton1Click:Connect(function()
                 BhopSettings.Binds[key] = nil
