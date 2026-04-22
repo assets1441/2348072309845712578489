@@ -9,7 +9,7 @@ local LocalPlayer = Players.LocalPlayer
 local BhopSettings = {
     Enabled = false,
     Chance = 100, 
-    DelayMs = 0,
+    DelayMs = 0, -- 0 = perfect
     Binds = {} -- Формат: { [Enum.KeyCode.F] = "Hold", [Enum.KeyCode.T] = "Toggle" }
 }
 
@@ -20,7 +20,6 @@ local function SimulateSpacebar()
         task.wait(0.01)
         keyrelease(0x20)
     else
-        -- Фоллбек, если экзекутор не поддерживает keypress
         VIM:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
         task.wait(0.01)
         VIM:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
@@ -37,12 +36,9 @@ local function SetupBhop(character)
     connection = humanoid.StateChanged:Connect(function(oldState, newState)
         if not BhopSettings.Enabled then return end
         
-        -- Срабатывает в самый первый кадр касания земли
         if newState == Enum.HumanoidStateType.Landed or newState == Enum.HumanoidStateType.Running then
-            -- Проверяем шанс
             if math.random(1, 100) <= BhopSettings.Chance then
                 task.spawn(function()
-                    -- Проверяем тайминг (задержку)
                     if BhopSettings.DelayMs > 0 then
                         task.wait(BhopSettings.DelayMs / 1000)
                     end
@@ -65,16 +61,20 @@ end)
 BhopToggle.OnRightClick = function()
     local modal = Library:OpenModal("Bhop Settings")
     
+    -- Шанс (0 до 100)
     Library:AddModalSlider(modal, "Hit Chance", 0, 100, BhopSettings.Chance, function(v)
         return v == 100 and "Perfect" or v.."%"
     end, function(val)
         BhopSettings.Chance = val
     end)
 
-    Library:AddModalSlider(modal, "Timing Delay", 0, 10, BhopSettings.DelayMs, function(v)
-        return v == 0 and "Perfect" or v.." ms"
+    -- Инвертированный слайдер (Значение 0 = 10мс, Значение 10 = Perfect(0мс))
+    -- default вычисляем как (10 - текущий delay)
+    Library:AddModalSlider(modal, "Timing Delay", 0, 10, 10 - BhopSettings.DelayMs, function(v)
+        local actualDelay = 10 - v
+        return actualDelay == 0 and "Perfect" or actualDelay.." ms"
     end, function(val)
-        BhopSettings.DelayMs = val
+        BhopSettings.DelayMs = 10 - val
     end)
 end
 
@@ -83,13 +83,14 @@ BhopToggle.OnMiddleClick = function()
     local modal = Library:OpenModal("Bhop Keybinds")
     
     local function RefreshBindsList()
+        -- Очищаем старые элементы, оставляя Layout и Padding
         for _, c in pairs(modal:GetChildren()) do
             if not c:IsA("UIListLayout") and not c:IsA("UIPadding") then c:Destroy() end
         end
         
         -- Кнопка "Добавить бинд"
         local AddBtn = Instance.new("TextButton")
-        AddBtn.Size = UDim2.new(0.9,0,0,30); AddBtn.BackgroundColor3 = Color3.fromRGB(30,30,30)
+        AddBtn.Size = UDim2.new(0.9,0,0,35); AddBtn.BackgroundColor3 = Color3.fromRGB(35,35,35)
         AddBtn.Text = "+ Press to bind key"; AddBtn.TextColor3 = Color3.new(1,1,1); AddBtn.Font = Enum.Font.GothamMedium; AddBtn.Parent = modal
         Instance.new("UICorner", AddBtn).CornerRadius = UDim.new(0,6)
         
@@ -102,7 +103,7 @@ BhopToggle.OnMiddleClick = function()
             
             local c; c = UserInputService.InputBegan:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.Keyboard then
-                    BhopSettings.Binds[input.KeyCode] = "Toggle" -- По умолчанию режим Toggle
+                    BhopSettings.Binds[input.KeyCode] = "Toggle"
                     c:Disconnect()
                     RefreshBindsList()
                 end
@@ -164,7 +165,6 @@ UserInputService.InputEnded:Connect(function(input, gp)
 end)
 
 
--- Остальные заглушки для примера
 Library:AddButton("Main", "Destroy Map", {Text = "Dangerous!", Warning = true}, function()
     print("Map Destroyed")
 end)
