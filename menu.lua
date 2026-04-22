@@ -82,14 +82,15 @@ ContentContainer.Size = UDim2.new(0,420,1,-100); ContentContainer.Position = UDi
 ContentContainer.BackgroundTransparency = 1; ContentContainer.Parent = MainMover 
 
 -- МОДАЛЬНЫЕ ОКНА (НАСТРОЙКИ И БИНДЫ)
-local ModalOverlay = Instance.new("TextButton") -- Сделано кнопкой, чтобы клик по фону закрывал меню
+local ModalOverlay = Instance.new("TextButton") 
 ModalOverlay.Size = UDim2.new(1,0,1,0); ModalOverlay.BackgroundColor3 = Color3.new(0,0,0); ModalOverlay.BackgroundTransparency = 1
 ModalOverlay.Text = ""; ModalOverlay.AutoButtonColor = false
 ModalOverlay.Visible = false; ModalOverlay.ZIndex = 3000; ModalOverlay.Parent = ScreenGui
 
-local ModalWindow = Instance.new("Frame")
-ModalWindow.Size = UDim2.new(0,350,0,400); ModalWindow.Position = UDim2.new(0.5,0,0.5,10); ModalWindow.AnchorPoint = Vector2.new(0.5,0.5)
-ModalWindow.BackgroundColor3 = Theme.NotchBG; ModalWindow.ZIndex = 3001; ModalWindow.Active = true; ModalWindow.Parent = ModalOverlay
+-- Используем CanvasGroup для идеального Fade In всего окна
+local ModalWindow = Instance.new("CanvasGroup")
+ModalWindow.Size = UDim2.new(0,350,0,400); ModalWindow.Position = UDim2.new(0.5,0,0.5,0); ModalWindow.AnchorPoint = Vector2.new(0.5,0.5)
+ModalWindow.BackgroundColor3 = Theme.NotchBG; ModalWindow.ZIndex = 3001; ModalWindow.GroupTransparency = 1; ModalWindow.Parent = ModalOverlay
 Instance.new("UICorner", ModalWindow).CornerRadius = UDim.new(0,12)
 ApplyTextStroke(ModalWindow)
 
@@ -105,21 +106,23 @@ ModalLayout.Padding = UDim.new(0, 10); ModalLayout.HorizontalAlignment = Enum.Ho
 ModalLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() ModalScroll.CanvasSize = UDim2.new(0,0,0,ModalLayout.AbsoluteContentSize.Y + 20) end)
 Instance.new("UIPadding", ModalScroll).PaddingTop = UDim.new(0,5)
 
--- Клик вне окна закрывает его
+-- Закрытие при клике по фону
 ModalOverlay.MouseButton1Click:Connect(function() Library:CloseModal() end)
 
 function Library:OpenModal(title)
     for _, child in pairs(ModalScroll:GetChildren()) do if not child:IsA("UIListLayout") and not child:IsA("UIPadding") then child:Destroy() end end
     ModalTitle.Text = title:upper()
     ModalOverlay.Visible = true
-    TweenService:Create(ModalOverlay, TweenInfo.new(0.25, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.4}):Play()
-    TweenService:Create(ModalWindow, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.new(0.5,0,0.5,0)}):Play()
+    -- Плавный Fade In без слайда
+    TweenService:Create(ModalOverlay, TweenInfo.new(0.25, Enum.EasingStyle.Sine), {BackgroundTransparency = 0.4}):Play()
+    TweenService:Create(ModalWindow, TweenInfo.new(0.25, Enum.EasingStyle.Sine), {GroupTransparency = 0}):Play()
     return ModalScroll
 end
 
 function Library:CloseModal()
-    TweenService:Create(ModalOverlay, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(ModalWindow, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {Position = UDim2.new(0.5,0,0.5,10)}):Play()
+    -- Плавный Fade Out без слайда
+    TweenService:Create(ModalOverlay, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(ModalWindow, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {GroupTransparency = 1}):Play()
     task.delay(0.2, function() ModalOverlay.Visible = false end)
 end
 
@@ -135,7 +138,7 @@ function Library:AddModalSlider(parent, text, min, max, default, formatFunc, cal
     local dragging = false
     local function update(input)
         local rawPos = math.clamp((input.Position.X - BG.AbsolutePosition.X) / BG.AbsoluteSize.X, 0, 1)
-        val = math.round(min + (max-min)*rawPos) -- Делаем слайдер точечным (целые числа)
+        val = math.round(min + (max-min)*rawPos) 
         local snapPos = (val - min) / (max - min)
         
         Label.Text = text..": "..(formatFunc and formatFunc(val) or val)
@@ -148,8 +151,7 @@ function Library:AddModalSlider(parent, text, min, max, default, formatFunc, cal
 end
 
 -- КУРСОР И ПОДСКАЗКИ
-local CursorBlob = Instance.new("Frame") 
-CursorBlob.BackgroundColor3 = Color3.new(1,1,1); CursorBlob.AnchorPoint = Vector2.new(0.5,0.5); CursorBlob.ZIndex = 4000; CursorBlob.Visible = false; CursorBlob.BorderSizePixel = 0; CursorBlob.Parent = ScreenGui 
+local CursorBlob = Instance.new("Frame"); CursorBlob.BackgroundColor3 = Color3.new(1,1,1); CursorBlob.AnchorPoint = Vector2.new(0.5,0.5); CursorBlob.ZIndex = 4000; CursorBlob.Visible = false; CursorBlob.BorderSizePixel = 0; CursorBlob.Parent = ScreenGui 
 Instance.new("UICorner", CursorBlob).CornerRadius = UDim.new(1,0) 
 local CursorStroke = Instance.new("UIStroke", CursorBlob); CursorStroke.Color = Theme.CursorGray; CursorStroke.Thickness = 1.5; CursorStroke.Transparency = 1 
 local CursorGradient = Instance.new("UIGradient", CursorBlob) 
@@ -228,8 +230,7 @@ function Library:CreateTab(name)
 	ApplyTextStroke(TabBtn) 
 
 	local PageGroup = Instance.new("CanvasGroup") 
-	PageGroup.Size = UDim2.new(1,0,1,0); PageGroup.Position = UDim2.new(0,0,0,15) -- Изначально смещено вниз для slide анимации
-	PageGroup.BackgroundTransparency = 1; PageGroup.GroupTransparency = 1 
+	PageGroup.Size = UDim2.new(1,0,1,0); PageGroup.BackgroundTransparency = 1; PageGroup.GroupTransparency = 1 
 	PageGroup.Visible = false; PageGroup.Parent = ContentContainer 
 
 	local Scroll = Instance.new("ScrollingFrame") 
@@ -244,19 +245,18 @@ function Library:CreateTab(name)
 		for _, t in pairs(Library.Tabs) do 
 			TweenService:Create(t.Btn, TweenInfo.new(0.2), {TextColor3 = Theme.White}):Play() 
 			if t.PageGroup.Visible then 
-                -- Анимация исчезновения старого таба
-                TweenService:Create(t.PageGroup, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {GroupTransparency = 1, Position = UDim2.new(0,0,0,15)}):Play()
+                -- Вернул оригинальную логику табов: только Fade, без движений позиции
+                TweenService:Create(t.PageGroup, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {GroupTransparency = 1}):Play()
                 task.delay(0.2, function() t.PageGroup.Visible = false end) 
             end 
 		end 
 		Library.ActiveTab = PageGroup; PageGroup.Visible = true
-        -- Анимация появления нового таба (Fade In + Slide Up)
-        TweenService:Create(PageGroup, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {GroupTransparency = 0, Position = UDim2.new(0,0,0,0)}):Play() 
+        TweenService:Create(PageGroup, TweenInfo.new(0.25, Enum.EasingStyle.Sine), {GroupTransparency = 0}):Play() 
 		TweenService:Create(TabBtn, TweenInfo.new(0.3), {TextColor3 = Theme.PastelPink}):Play() 
 	end) 
 
 	Library.Tabs[name] = {Btn = TabBtn, PageGroup = PageGroup, Scroll = Scroll} 
-	if not Library.ActiveTab then Library.ActiveTab = PageGroup; PageGroup.Visible = true; PageGroup.GroupTransparency = 0; PageGroup.Position = UDim2.new(0,0,0,0); TabBtn.TextColor3 = Theme.PastelPink end 
+	if not Library.ActiveTab then Library.ActiveTab = PageGroup; PageGroup.Visible = true; PageGroup.GroupTransparency = 0; TabBtn.TextColor3 = Theme.PastelPink end 
 end 
 
 function Library:AddButton(tabName, text, tooltipData, callback) 
@@ -273,8 +273,6 @@ end
 
 function Library:AddToggle(tabName, text, tooltipData, default, callback) 
 	local page = Library.Tabs[tabName].Scroll; local state = default or false 
-
-    -- Сначала создаем кнопку, чтобы потом к ней можно было обращаться
 	local Btn = Instance.new("TextButton") 
 	Btn.BackgroundTransparency = 1; Btn.Size = UDim2.new(1,0,0,32)
 	Btn.Text = (state and "> " or "") .. text:lower() 
@@ -282,14 +280,10 @@ function Library:AddToggle(tabName, text, tooltipData, default, callback)
 	Btn.TextXAlignment = Enum.TextXAlignment.Left; Btn.Parent = page 
 	ApplyTextStroke(Btn) 
 
-    -- Теперь создаем API, который изменяет уже существующую кнопку
     local ToggleAPI = {
-        State = state,
-        OnRightClick = nil,
-        OnMiddleClick = nil,
+        State = state, OnRightClick = nil, OnMiddleClick = nil,
         SetValue = function(self, val)
-            self.State = val
-            Btn.Text = (self.State and "> " or "") .. text:lower()
+            self.State = val; Btn.Text = (self.State and "> " or "") .. text:lower()
             TweenService:Create(Btn, TweenInfo.new(0.2), {TextColor3 = self.State and Theme.PastelPink or Theme.White}):Play()
             callback(self.State)
         end
@@ -299,15 +293,10 @@ function Library:AddToggle(tabName, text, tooltipData, default, callback)
 	Btn.MouseLeave:Connect(function() if not ToggleAPI.State then TweenService:Create(Btn, TweenInfo.new(0.2), {TextColor3 = Theme.White}):Play() end; if tooltipData then UnqueueTooltip(Btn) end end) 
 
     Btn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            ToggleAPI:SetValue(not ToggleAPI.State)
-        elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-            if ToggleAPI.OnRightClick then ToggleAPI.OnRightClick() end
-        elseif input.UserInputType == Enum.UserInputType.MouseButton3 then
-            if ToggleAPI.OnMiddleClick then ToggleAPI.OnMiddleClick() end
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then ToggleAPI:SetValue(not ToggleAPI.State)
+        elseif input.UserInputType == Enum.UserInputType.MouseButton2 then if ToggleAPI.OnRightClick then ToggleAPI.OnRightClick() end
+        elseif input.UserInputType == Enum.UserInputType.MouseButton3 then if ToggleAPI.OnMiddleClick then ToggleAPI.OnMiddleClick() end end
     end)
-    
     return ToggleAPI
 end 
 
@@ -327,7 +316,7 @@ function Library:AddSlider(tabName, text, min, max, default, callback)
 	local isDragging = false 
 	local function updateSlider(input) 
 		local rawPos = math.clamp((input.Position.X - BG.AbsolutePosition.X) / BG.AbsoluteSize.X, 0, 1) 
-		value = math.round(min + (max-min)*rawPos) -- Слайдер стал точечным
+		value = math.round(min + (max-min)*rawPos) 
         local snapPos = (value - min) / (max - min)
 		SliderText.Text = text:lower()..": "..tostring(value) 
 		TweenService:Create(Fill, TweenInfo.new(0.1), {Size = UDim2.new(snapPos,0,1,0)}):Play(); callback(value) 
@@ -344,16 +333,13 @@ function Library:ToggleUI()
 		ScreenGui.Enabled = true; BlockClickFrame.Visible = true; pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false) end) 
 		TweenService:Create(DarkBackground, twInfo, {BackgroundTransparency = Theme.FadeTransparency}):Play() 
 		TweenService:Create(TopNotch, twInfo, {Position = UDim2.new(0.5, 0, 0, -10)}):Play() 
-		if Library.ActiveTab then 
-            Library.ActiveTab.Position = UDim2.new(0,0,0,15)
-            TweenService:Create(Library.ActiveTab, twInfo, {GroupTransparency = 0, Position = UDim2.new(0,0,0,0)}):Play() 
-        end 
+		if Library.ActiveTab then TweenService:Create(Library.ActiveTab, twInfo, {GroupTransparency = 0}):Play() end 
 		cursorPos = UserInputService:GetMouseLocation() 
 	else 
 		BlockClickFrame.Visible = false; pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true) end) 
 		TweenService:Create(DarkBackground, TweenInfo.new(0.25, Enum.EasingStyle.Quart), {BackgroundTransparency = 1}):Play() 
 		TweenService:Create(TopNotch, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {Position = UDim2.new(0.5, 0, 0, -100)}):Play() 
-		if Library.ActiveTab then TweenService:Create(Library.ActiveTab, TweenInfo.new(0.25, Enum.EasingStyle.Quart), {GroupTransparency = 1, Position = UDim2.new(0,0,0,15)}):Play() end 
+		if Library.ActiveTab then TweenService:Create(Library.ActiveTab, TweenInfo.new(0.25, Enum.EasingStyle.Quart), {GroupTransparency = 1}):Play() end 
 		task.delay(0.3, function() if not Library.IsOpen then ScreenGui.Enabled = false end end) 
 	end 
 end 
