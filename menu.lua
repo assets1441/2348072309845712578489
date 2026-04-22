@@ -87,12 +87,12 @@ ModalOverlay.Size = UDim2.new(1,0,1,0); ModalOverlay.BackgroundColor3 = Color3.n
 ModalOverlay.Text = ""; ModalOverlay.AutoButtonColor = false
 ModalOverlay.Visible = false; ModalOverlay.ZIndex = 3000; ModalOverlay.Parent = ScreenGui
 
--- Используем CanvasGroup для идеального Fade In всего окна
+-- CanvasGroup БЕЗ обводки, чтобы избежать багов Роблокса (черных квадратов)
 local ModalWindow = Instance.new("CanvasGroup")
 ModalWindow.Size = UDim2.new(0,350,0,400); ModalWindow.Position = UDim2.new(0.5,0,0.5,0); ModalWindow.AnchorPoint = Vector2.new(0.5,0.5)
-ModalWindow.BackgroundColor3 = Theme.NotchBG; ModalWindow.ZIndex = 3001; ModalWindow.GroupTransparency = 1; ModalWindow.Parent = ModalOverlay
+ModalWindow.BackgroundColor3 = Theme.NotchBG; ModalWindow.ZIndex = 3001; ModalWindow.GroupTransparency = 1; ModalWindow.Parent = ScreenGui
+ModalWindow.Visible = false
 Instance.new("UICorner", ModalWindow).CornerRadius = UDim.new(0,12)
-ApplyTextStroke(ModalWindow)
 
 local ModalTitle = Instance.new("TextLabel")
 ModalTitle.Size = UDim2.new(1,0,0,40); ModalTitle.BackgroundTransparency = 1; ModalTitle.Text = "Settings"
@@ -106,24 +106,27 @@ ModalLayout.Padding = UDim.new(0, 10); ModalLayout.HorizontalAlignment = Enum.Ho
 ModalLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() ModalScroll.CanvasSize = UDim2.new(0,0,0,ModalLayout.AbsoluteContentSize.Y + 20) end)
 Instance.new("UIPadding", ModalScroll).PaddingTop = UDim.new(0,5)
 
--- Закрытие при клике по фону
 ModalOverlay.MouseButton1Click:Connect(function() Library:CloseModal() end)
 
+-- Идеальный плавный фейд модалок
 function Library:OpenModal(title)
     for _, child in pairs(ModalScroll:GetChildren()) do if not child:IsA("UIListLayout") and not child:IsA("UIPadding") then child:Destroy() end end
     ModalTitle.Text = title:upper()
     ModalOverlay.Visible = true
-    -- Плавный Fade In без слайда
+    ModalWindow.Visible = true
+    
     TweenService:Create(ModalOverlay, TweenInfo.new(0.25, Enum.EasingStyle.Sine), {BackgroundTransparency = 0.4}):Play()
     TweenService:Create(ModalWindow, TweenInfo.new(0.25, Enum.EasingStyle.Sine), {GroupTransparency = 0}):Play()
     return ModalScroll
 end
 
 function Library:CloseModal()
-    -- Плавный Fade Out без слайда
     TweenService:Create(ModalOverlay, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {BackgroundTransparency = 1}):Play()
     TweenService:Create(ModalWindow, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {GroupTransparency = 1}):Play()
-    task.delay(0.2, function() ModalOverlay.Visible = false end)
+    task.delay(0.2, function() 
+        ModalOverlay.Visible = false 
+        ModalWindow.Visible = false
+    end)
 end
 
 function Library:AddModalSlider(parent, text, min, max, default, formatFunc, callback)
@@ -140,7 +143,6 @@ function Library:AddModalSlider(parent, text, min, max, default, formatFunc, cal
         local rawPos = math.clamp((input.Position.X - BG.AbsolutePosition.X) / BG.AbsoluteSize.X, 0, 1)
         val = math.round(min + (max-min)*rawPos) 
         local snapPos = (val - min) / (max - min)
-        
         Label.Text = text..": "..(formatFunc and formatFunc(val) or val)
         Fill.Size = UDim2.new(snapPos,0,1,0)
         callback(val)
@@ -243,16 +245,15 @@ function Library:CreateTab(name)
 	TabBtn.MouseButton1Click:Connect(function() 
 		if Library.ActiveTab == PageGroup then return end 
 		for _, t in pairs(Library.Tabs) do 
-			TweenService:Create(t.Btn, TweenInfo.new(0.2), {TextColor3 = Theme.White}):Play() 
+			TweenService:Create(t.Btn, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {TextColor3 = Theme.White}):Play() 
 			if t.PageGroup.Visible then 
-                -- Вернул оригинальную логику табов: только Fade, без движений позиции
                 TweenService:Create(t.PageGroup, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {GroupTransparency = 1}):Play()
                 task.delay(0.2, function() t.PageGroup.Visible = false end) 
             end 
 		end 
 		Library.ActiveTab = PageGroup; PageGroup.Visible = true
         TweenService:Create(PageGroup, TweenInfo.new(0.25, Enum.EasingStyle.Sine), {GroupTransparency = 0}):Play() 
-		TweenService:Create(TabBtn, TweenInfo.new(0.3), {TextColor3 = Theme.PastelPink}):Play() 
+		TweenService:Create(TabBtn, TweenInfo.new(0.25, Enum.EasingStyle.Sine), {TextColor3 = Theme.PastelPink}):Play() 
 	end) 
 
 	Library.Tabs[name] = {Btn = TabBtn, PageGroup = PageGroup, Scroll = Scroll} 
@@ -326,21 +327,41 @@ function Library:AddSlider(tabName, text, min, max, default, callback)
 	table.insert(Library.Connections, UserInputService.InputChanged:Connect(function(i) if isDragging and i.UserInputType == Enum.UserInputType.MouseMovement then updateSlider(i) end end)) 
 end 
 
+-- ИСПРАВЛЕНО ЗАКРЫТИЕ: Функции больше не висят 2 секунды. Синхронный фейд.
 function Library:ToggleUI() 
 	Library.IsOpen = not Library.IsOpen 
-	local twInfo = TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out) 
-	if Library.IsOpen then 
-		ScreenGui.Enabled = true; BlockClickFrame.Visible = true; pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false) end) 
-		TweenService:Create(DarkBackground, twInfo, {BackgroundTransparency = Theme.FadeTransparency}):Play() 
-		TweenService:Create(TopNotch, twInfo, {Position = UDim2.new(0.5, 0, 0, -10)}):Play() 
-		if Library.ActiveTab then TweenService:Create(Library.ActiveTab, twInfo, {GroupTransparency = 0}):Play() end 
+	local twInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut) 
+	
+    if Library.IsOpen then 
+		ScreenGui.Enabled = true; BlockClickFrame.Visible = true
+        pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false) end) 
+		
+        TweenService:Create(DarkBackground, twInfo, {BackgroundTransparency = Theme.FadeTransparency}):Play() 
+		TweenService:Create(TopNotch, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, 0, 0, -10)}):Play() 
+		
+        if Library.ActiveTab then 
+            Library.ActiveTab.Visible = true
+            TweenService:Create(Library.ActiveTab, twInfo, {GroupTransparency = 0}):Play() 
+        end 
 		cursorPos = UserInputService:GetMouseLocation() 
 	else 
-		BlockClickFrame.Visible = false; pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true) end) 
-		TweenService:Create(DarkBackground, TweenInfo.new(0.25, Enum.EasingStyle.Quart), {BackgroundTransparency = 1}):Play() 
-		TweenService:Create(TopNotch, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {Position = UDim2.new(0.5, 0, 0, -100)}):Play() 
-		if Library.ActiveTab then TweenService:Create(Library.ActiveTab, TweenInfo.new(0.25, Enum.EasingStyle.Quart), {GroupTransparency = 1}):Play() end 
-		task.delay(0.3, function() if not Library.IsOpen then ScreenGui.Enabled = false end end) 
+		BlockClickFrame.Visible = false
+        pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true) end) 
+		
+        TweenService:Create(DarkBackground, twInfo, {BackgroundTransparency = 1}):Play() 
+		TweenService:Create(TopNotch, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {Position = UDim2.new(0.5, 0, 0, -100)}):Play() 
+		
+        -- ТЕПЕРЬ АКТИВНЫЙ ТАБ ИСЧЕЗАЕТ ВМЕСТЕ С ФОНОМ С ТЕМИ ЖЕ ТАЙМИНГАМИ
+        if Library.ActiveTab then 
+            TweenService:Create(Library.ActiveTab, twInfo, {GroupTransparency = 1}):Play() 
+        end 
+		
+        task.delay(0.35, function() 
+            if not Library.IsOpen then 
+                ScreenGui.Enabled = false 
+                if Library.ActiveTab then Library.ActiveTab.Visible = false end
+            end 
+        end) 
 	end 
 end 
 
