@@ -81,10 +81,73 @@ local ContentContainer = Instance.new("Frame")
 ContentContainer.Size = UDim2.new(0,420,1,-100); ContentContainer.Position = UDim2.new(0,50,0,100) 
 ContentContainer.BackgroundTransparency = 1; ContentContainer.Parent = MainMover 
 
+-- МОДАЛЬНЫЕ ОКНА (НАСТРОЙКИ И БИНДЫ)
+local ModalOverlay = Instance.new("Frame")
+ModalOverlay.Size = UDim2.new(1,0,1,0); ModalOverlay.BackgroundColor3 = Color3.new(0,0,0); ModalOverlay.BackgroundTransparency = 1
+ModalOverlay.Visible = false; ModalOverlay.ZIndex = 3000; ModalOverlay.Active = true; ModalOverlay.Parent = ScreenGui
+
+local ModalWindow = Instance.new("Frame")
+ModalWindow.Size = UDim2.new(0,350,0,400); ModalWindow.Position = UDim2.new(0.5,0,0.5,0); ModalWindow.AnchorPoint = Vector2.new(0.5,0.5)
+ModalWindow.BackgroundColor3 = Theme.NotchBG; ModalWindow.ZIndex = 3001; ModalWindow.Parent = ModalOverlay
+Instance.new("UICorner", ModalWindow).CornerRadius = UDim.new(0,12)
+ApplyTextStroke(ModalWindow)
+
+local ModalTitle = Instance.new("TextLabel")
+ModalTitle.Size = UDim2.new(1,0,0,40); ModalTitle.BackgroundTransparency = 1; ModalTitle.Text = "Settings"
+ModalTitle.TextColor3 = Theme.PastelPink; ModalTitle.Font = Enum.Font.GothamBold; ModalTitle.TextSize = 18; ModalTitle.ZIndex = 3002; ModalTitle.Parent = ModalWindow
+
+local ModalClose = Instance.new("TextButton")
+ModalClose.Size = UDim2.new(0,40,0,40); ModalClose.Position = UDim2.new(1,-40,0,0); ModalClose.BackgroundTransparency = 1
+ModalClose.Text = "X"; ModalClose.TextColor3 = Theme.CursorGray; ModalClose.Font = Enum.Font.GothamBold; ModalClose.TextSize = 16; ModalClose.ZIndex = 3002; ModalClose.Parent = ModalWindow
+ModalClose.MouseButton1Click:Connect(function() Library:CloseModal() end)
+
+local ModalScroll = Instance.new("ScrollingFrame")
+ModalScroll.Size = UDim2.new(1,0,1,-50); ModalScroll.Position = UDim2.new(0,0,0,40); ModalScroll.BackgroundTransparency = 1
+ModalScroll.BorderSizePixel = 0; ModalScroll.ScrollBarThickness = 2; ModalScroll.ZIndex = 3002; ModalScroll.Parent = ModalWindow
+local ModalLayout = Instance.new("UIListLayout", ModalScroll)
+ModalLayout.Padding = UDim.new(0, 10); ModalLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ModalLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() ModalScroll.CanvasSize = UDim2.new(0,0,0,ModalLayout.AbsoluteContentSize.Y + 20) end)
+Instance.new("UIPadding", ModalScroll).PaddingTop = UDim.new(0,5)
+
+function Library:OpenModal(title)
+    for _, child in pairs(ModalScroll:GetChildren()) do if not child:IsA("UIListLayout") and not child:IsA("UIPadding") then child:Destroy() end end
+    ModalTitle.Text = title:upper()
+    ModalOverlay.Visible = true
+    TweenService:Create(ModalOverlay, TweenInfo.new(0.2), {BackgroundTransparency = 0.4}):Play()
+    return ModalScroll
+end
+
+function Library:CloseModal()
+    TweenService:Create(ModalOverlay, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+    task.delay(0.2, function() ModalOverlay.Visible = false end)
+end
+
+function Library:AddModalSlider(parent, text, min, max, default, formatFunc, callback)
+    local val = default
+    local Frame = Instance.new("Frame"); Frame.Size = UDim2.new(0.9,0,0,45); Frame.BackgroundTransparency = 1; Frame.ZIndex = 3003; Frame.Parent = parent
+    local Label = Instance.new("TextLabel"); Label.Size = UDim2.new(1,0,0,20); Label.BackgroundTransparency = 1
+    Label.Text = text..": "..(formatFunc and formatFunc(val) or val); Label.TextColor3 = Theme.White; Label.Font = Enum.Font.GothamMedium; Label.TextSize = 14; Label.TextXAlignment = Enum.TextXAlignment.Left; Label.ZIndex = 3003; Label.Parent = Frame
+    local BG = Instance.new("Frame"); BG.Size = UDim2.new(1,0,0,6); BG.Position = UDim2.new(0,0,0,28); BG.BackgroundColor3 = Color3.new(0.2,0.2,0.2); BG.ZIndex = 3003; BG.Parent = Frame; Instance.new("UICorner", BG).CornerRadius = UDim.new(1,0)
+    local Fill = Instance.new("Frame"); Fill.Size = UDim2.new((val-min)/(max-min),0,1,0); Fill.BackgroundColor3 = Theme.PastelPink; Fill.ZIndex = 3004; Fill.Parent = BG; Instance.new("UICorner", Fill).CornerRadius = UDim.new(1,0)
+    local Btn = Instance.new("TextButton"); Btn.Size = UDim2.new(1,0,1,0); Btn.BackgroundTransparency = 1; Btn.Text = ""; Btn.ZIndex = 3005; Btn.Parent = Frame
+    local dragging = false
+    local function update(input)
+        local pos = math.clamp((input.Position.X - BG.AbsolutePosition.X) / BG.AbsoluteSize.X, 0, 1)
+        val = math.floor(min + (max-min)*pos)
+        Label.Text = text..": "..(formatFunc and formatFunc(val) or val)
+        Fill.Size = UDim2.new(pos,0,1,0)
+        callback(val)
+    end
+    Btn.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; update(i) end end)
+    Btn.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+    UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then update(i) end end)
+end
+
+-- КУРСОР И ПОДСКАЗКИ (оставил твой код без изменений)
 local CursorBlob = Instance.new("Frame") 
 CursorBlob.BackgroundColor3 = Color3.new(1,1,1) 
 CursorBlob.AnchorPoint = Vector2.new(0.5,0.5) 
-CursorBlob.ZIndex = 2000; CursorBlob.Visible = false; CursorBlob.BorderSizePixel = 0 
+CursorBlob.ZIndex = 4000; CursorBlob.Visible = false; CursorBlob.BorderSizePixel = 0 
 CursorBlob.Parent = ScreenGui 
 Instance.new("UICorner", CursorBlob).CornerRadius = UDim.new(1,0) 
 
@@ -97,7 +160,7 @@ local CursorGradient = Instance.new("UIGradient", CursorBlob)
 local TooltipBlob = Instance.new("Frame") 
 TooltipBlob.BackgroundColor3 = Color3.new(1,1,1) 
 TooltipBlob.AnchorPoint = Vector2.new(0.5,0.5) 
-TooltipBlob.ZIndex = 1500; TooltipBlob.Visible = false 
+TooltipBlob.ZIndex = 3500; TooltipBlob.Visible = false 
 TooltipBlob.ClipsDescendants = true; TooltipBlob.Parent = ScreenGui 
 
 local TooltipCorner = Instance.new("UICorner", TooltipBlob) 
@@ -107,7 +170,7 @@ local TooltipText = Instance.new("TextLabel")
 TooltipText.BackgroundTransparency = 1; TooltipText.TextColor3 = Theme.NotchBG 
 TooltipText.Font = Enum.Font.GothamBold; TooltipText.TextSize = 13 
 TooltipText.AnchorPoint = Vector2.new(0.5, 0.5); TooltipText.Position = UDim2.new(0.5, 0, 0.5, 0) 
-TooltipText.ZIndex = 1501; TooltipText.Parent = TooltipBlob 
+TooltipText.ZIndex = 3501; TooltipText.Parent = TooltipBlob 
 
 local cursorPos, cursorSize = Vector2.new(0,0), Vector2.new(14,14) 
 local tipPos, tipAnchor, tipSize = Vector2.new(0,0), Vector2.new(0,0), Vector2.new(0,0) 
@@ -313,16 +376,42 @@ function Library:AddButton(tabName, text, tooltipData, callback)
 	Btn.MouseButton1Click:Connect(callback) 
 end 
 
+-- ОБНОВЛЕННЫЙ ADDTOGGLE ДЛЯ ПКМ / СКМ
 function Library:AddToggle(tabName, text, tooltipData, default, callback) 
 	local page = Library.Tabs[tabName].Scroll; local state = default or false 
+    
+    local ToggleAPI = {
+        State = state,
+        OnRightClick = nil,
+        OnMiddleClick = nil,
+        SetValue = function(self, val)
+            self.State = val
+            Btn.Text = (self.State and "> " or "") .. text:lower()
+            TweenService:Create(Btn, TweenInfo.new(0.2), {TextColor3 = self.State and Theme.PastelPink or Theme.White}):Play()
+            callback(self.State)
+        end
+    }
+
 	local Btn = Instance.new("TextButton") 
 	Btn.BackgroundTransparency = 1; Btn.Size = UDim2.new(1,0,0,32); Btn.Text = (state and "> " or "") .. text:lower() 
 	Btn.TextColor3 = state and Theme.PastelPink or Theme.White; Btn.Font = Enum.Font.GothamMedium; Btn.TextSize = 16 
 	Btn.TextXAlignment = Enum.TextXAlignment.Left; Btn.Parent = page 
 	ApplyTextStroke(Btn) 
-	Btn.MouseEnter:Connect(function() if not state then TweenService:Create(Btn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(200,200,200)}):Play() end; if tooltipData then QueueTooltip(Btn, tooltipData) end end) 
-	Btn.MouseLeave:Connect(function() if not state then TweenService:Create(Btn, TweenInfo.new(0.2), {TextColor3 = Theme.White}):Play() end; if tooltipData then UnqueueTooltip(Btn) end end) 
-	Btn.MouseButton1Click:Connect(function() state = not state; Btn.Text = (state and "> " or "") .. text:lower(); TweenService:Create(Btn, TweenInfo.new(0.2), {TextColor3 = state and Theme.PastelPink or Theme.White}):Play(); callback(state) end) 
+
+	Btn.MouseEnter:Connect(function() if not ToggleAPI.State then TweenService:Create(Btn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(200,200,200)}):Play() end; if tooltipData then QueueTooltip(Btn, tooltipData) end end) 
+	Btn.MouseLeave:Connect(function() if not ToggleAPI.State then TweenService:Create(Btn, TweenInfo.new(0.2), {TextColor3 = Theme.White}):Play() end; if tooltipData then UnqueueTooltip(Btn) end end) 
+
+    Btn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            ToggleAPI:SetValue(not ToggleAPI.State)
+        elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+            if ToggleAPI.OnRightClick then ToggleAPI.OnRightClick() end
+        elseif input.UserInputType == Enum.UserInputType.MouseButton3 then
+            if ToggleAPI.OnMiddleClick then ToggleAPI.OnMiddleClick() end
+        end
+    end)
+    
+    return ToggleAPI
 end 
 
 function Library:AddSlider(tabName, text, min, max, default, callback) 
